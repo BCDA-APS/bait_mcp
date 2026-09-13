@@ -5,7 +5,7 @@ description = "MCP server exposing a Bluesky/BITS instrument to LLM agents via t
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "mcp=1.9.0",
+    "mcp>=1.9.0,<2.0",
     "pyyaml>=6.0.0",
     "bluesky-queueserver-api>=0.0.13",
 ]
