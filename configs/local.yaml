@@ -1,0 +1,25 @@
+# bait_mcp configuration. Values here deep-merge over DEFAULT_CONFIG in
+# src/bait_mcp/config.py; CLI flags override YAML per process.
+
+mcp:
+  # aida spawns bait-mcp-server directly as a stdio subprocess (see
+  # ~/.aida/mcp.json), so it must speak MCP over stdin/stdout, not HTTP.
+  transport: "stdio"
+  # host/port/path are ignored under stdio; left here for reference/rollback.
+  host: "127.0.0.1"
+  port: 8051
+  path: "/mcp"
+
+qserver:
+  # bluesky-queueserver RE Manager 0MQ control address. Keep in sync with the
+  # instrument's qserver/qs-config.yml (network.zmq_control_addr).
+  zmq_control_addr: "tcp://localhost:60615"
+  # Seconds to wait for a function/task to complete.
+  timeout: 600
+  # Identity bait_mcp presents. user_group must permit read_device/set_device and
+  # the plans in the instrument's user_group_permissions.yaml.
+  user: "usaxs"
+  user_group: "primary"
+
+launcher:
+  shutdown_timeout_s: 5

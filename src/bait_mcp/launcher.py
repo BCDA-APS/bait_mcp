@@ -7,6 +7,7 @@ import signal
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 from .config import load_config
 
@@ -87,6 +88,25 @@ def kill_stale_servers(timeout_s: float = 5.0) -> None:
                 pass
 
 
+def _resolve_mcp_server_script() -> str:
+    """Locate the bait-mcp-server console script.
+
+    Prefers the sibling of the running interpreter (the same env's bin/
+    directory this launcher itself was installed into) over PATH: an MCP
+    client typically spawns this launcher by absolute path with only a
+    minimal inherited environment, so PATH may not include our conda env's
+    bin/ directory even though we know exactly where our sibling script
+    lives relative to sys.executable.
+    """
+    sibling = Path(sys.executable).parent / "bait-mcp-server"
+    if sibling.is_file():
+        return str(sibling)
+    found = shutil.which("bait-mcp-server")
+    if found is None:
+        raise RuntimeError("Could not resolve bait-mcp-server from PATH.")
+    return found
+
+
 def main() -> int:
     args = build_parser().parse_args()
     config = load_config(args.config)
@@ -96,9 +116,7 @@ def main() -> int:
     mcp_port = args.mcp_port or int(config["mcp"]["port"])
     mcp_path = args.mcp_path or config["mcp"]["path"]
 
-    mcp_script = shutil.which("bait-mcp-server")
-    if mcp_script is None:
-        raise RuntimeError("Could not resolve bait-mcp-server from PATH.")
+    mcp_script = _resolve_mcp_server_script()
 
     mcp_cmd = [
         mcp_script,
