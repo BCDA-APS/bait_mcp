@@ -86,6 +86,23 @@ def create_app(config: dict[str, Any], host: str, port: int, path: str) -> FastM
         return await call("queue_status")
 
     @mcp.tool()
+    async def load_plans(
+        path: Annotated[str, "Path (on the bait_mcp host) to a Python file defining plan(s)."],
+    ) -> dict[str, Any]:
+        """Upload a Python plan file into the queueserver's live worker so its
+        plans become queueable, then return the refreshed allowed-plans list.
+
+        Reads the file on the bait_mcp host and uploads its contents to the RE
+        worker (``script_upload``, ``update_lists=True``), so new plans show up in
+        ``list_plans`` and can be enqueued with ``add_plan`` — without editing the
+        instrument's ``startup.py``. Requires the environment open and an idle
+        worker (uploads can't run mid-plan); the plan's name must also be
+        permitted for this user group. Returns ``{"ok": true, "plans": [...]}`` or
+        ``{"ok": false, "error": ...}``.
+        """
+        return await call("load_plans", path)
+
+    @mcp.tool()
     async def add_plan(
         name: Annotated[str, "Plan name to enqueue."],
         args: Annotated[list[Any] | None, "Positional plan arguments."] = None,

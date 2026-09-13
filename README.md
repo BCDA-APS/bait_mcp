@@ -109,6 +109,12 @@ cp configs/example.yaml configs/local.yaml   # then edit qserver.zmq_control_add
 
 ## Launch
 
+Two transports. **streamable-http** (default) serves a long-lived HTTP endpoint;
+**stdio** speaks MCP over stdin/stdout for drop-in use in Claude Code or another
+harness that launches the server as a subprocess.
+
+### HTTP (default)
+
 ```bash
 uv run bait-mcp --config configs/local.yaml           # launcher + frontend
 uv run bait-mcp-server --config configs/local.yaml     # frontend only (standalone)
@@ -116,7 +122,20 @@ uv run bait-mcp-server --config configs/local.yaml     # frontend only (standalo
 
 With the defaults the MCP endpoint is `http://127.0.0.1:8051/mcp`.
 
+### stdio (for Claude Code / other harnesses)
+
+```bash
+uv run bait-mcp-server --transport stdio --config configs/local.yaml
+```
+
+Use **`bait-mcp-server`**, not `bait-mcp`: the launcher manages an HTTP subprocess
+and a port, which is the wrong lifecycle for stdio (the harness owns the process and
+the pipes). `host`/`port`/`path` are ignored under stdio. You can also set
+`mcp.transport: stdio` in the config instead of passing the flag.
+
 ## MCP client configuration
+
+### HTTP
 
 ```json
 {
@@ -127,6 +146,24 @@ With the defaults the MCP endpoint is `http://127.0.0.1:8051/mcp`.
 ```
 
 This is the shape `eaa_core.tool.mcp_client.MCPTool` expects.
+
+### stdio (Claude Code)
+
+```json
+{
+  "mcpServers": {
+    "bait_mcp": {
+      "command": "uv",
+      "args": ["run", "bait-mcp-server", "--transport", "stdio",
+               "--config", "configs/local.yaml"],
+      "cwd": "/path/to/bait_mcp"
+    }
+  }
+}
+```
+
+If bait_mcp is installed into an env already on `PATH` (`pip install -e .`), drop the
+`uv run` wrapper: `"command": "bait-mcp-server"` with the same `args` tail.
 
 ## Tools
 
@@ -141,6 +178,7 @@ on failure (e.g. queueserver unreachable, environment closed, unknown name).
 | `describe_device(name)` | The queueserver's description of one device. |
 | `list_plans()` | Plan names exposed to this user group. |
 | `describe_plan(name)` | A plan's parameter signature. |
+| `load_plans(path)` | Upload a Python plan file (read on the bait_mcp host) into the worker so its plans become queueable; returns the refreshed allowed-plans list. Needs env open + idle worker; the plan name must be permitted. |
 | `queue_status()` | RE Manager status (`manager_state`, running item, queue size). |
 | `add_plan(name, args=None, kwargs=None)` | Enqueue a plan (does not start it). |
 | `start_queue()` / `stop_queue()` | Start / stop queue execution. |
@@ -158,6 +196,7 @@ per process.
 
 | Key | Meaning | Default | CLI override |
 |---|---|---|---|
+| `mcp.transport` | `streamable-http` or `stdio` (stdio for Claude Code / a harness) | `streamable-http` | `--transport` |
 | `mcp.host` | HTTP bind host (loopback by default; it can write/run) | `127.0.0.1` | `--mcp-host` / `--host` |
 | `mcp.port` | HTTP bind port | `8051` | `--mcp-port` / `--port` |
 | `mcp.path` | HTTP path | `/mcp` | `--mcp-path` / `--path` |

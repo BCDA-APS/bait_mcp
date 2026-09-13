@@ -128,6 +128,31 @@ def test_add_and_run_plan(client):
     assert c.run_plan("count", [["sim_det"]])["ok"] is True
 
 
+def test_load_plans_uploads_file_and_returns_allowed(client, tmp_path):
+    c, fake = client
+    plan_file = tmp_path / "my_plans.py"
+    plan_file.write_text("def my_scan():\n    yield from []\n")
+    fake.task_result_value = {"result": {"success": True, "return_value": None}}
+    out = c.load_plans(str(plan_file))
+    assert out == {"ok": True, "plans": ["count", "scan"]}  # refreshed allow-list
+    assert fake.script_uploads == 1
+
+
+def test_load_plans_missing_file_is_error(client):
+    c, _ = client
+    out = c.load_plans("/no/such/file.py")
+    assert out["ok"] is False and "file" in out["error"].lower()
+
+
+def test_load_plans_upload_failure_surfaces_traceback(client, tmp_path):
+    c, fake = client
+    plan_file = tmp_path / "bad.py"
+    plan_file.write_text("def broken(:\n")  # syntax error the worker rejects
+    fake.task_result_value = {"result": {"success": False, "traceback": "SyntaxError: bad"}}
+    out = c.load_plans(str(plan_file))
+    assert out["ok"] is False and "SyntaxError" in out["error"]
+
+
 def test_functions_injected_once(client):
     c, fake = client
     fake.task_result_value = {"result": {"success": True, "return_value": {"motor": {"value": 1}}}}

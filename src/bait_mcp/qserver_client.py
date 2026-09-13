@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from bluesky_queueserver_api import BFunc, BPlan
@@ -161,6 +162,32 @@ class QServerClient:
 
     def list_plans(self) -> dict[str, Any]:
         try:
+            return {"ok": True, "plans": sorted(self._allowed("plans").keys())}
+        except Exception as exc:  # noqa: BLE001
+            return self._err(exc)
+
+    def load_plans(self, path: str) -> dict[str, Any]:
+        """Upload a Python file into the RE worker so the plans it defines become
+        queueable, and return the refreshed allowed-plans list.
+
+        Reads ``path`` on the bait_mcp host and ``script_upload``s its contents
+        with ``update_lists=True`` (regenerates the existing-plans list) so new
+        plans appear in ``list_plans`` and can be ``add_plan``'d — no
+        ``startup.py`` edit. Needs the environment open and an idle worker
+        (uploads can't run mid-plan); the plan's name must also be permitted for
+        this user group. Returns ``{"ok": true, "plans": [...]}`` or
+        ``{"ok": false, "error": ...}``.
+        """
+        try:
+            source = Path(path).read_text(encoding="utf-8")
+        except OSError as exc:
+            return self._err(exc)
+        try:
+            resp = self._api.script_upload(source, update_lists=True, update_re=False)
+            self._api.wait_for_completed_task(resp["task_uid"], timeout=self._timeout)
+            out = self._normalize_task_result(self._api.task_result(resp["task_uid"]))
+            if not out["ok"]:
+                return out
             return {"ok": True, "plans": sorted(self._allowed("plans").keys())}
         except Exception as exc:  # noqa: BLE001
             return self._err(exc)
