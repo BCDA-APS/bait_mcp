@@ -123,6 +123,12 @@ def create_app(config: dict[str, Any], host: str, port: int, path: str) -> FastM
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the bait_mcp MCP frontend.")
     parser.add_argument("--config", help="Path to a YAML configuration file.")
+    parser.add_argument(
+        "--transport",
+        choices=["streamable-http", "stdio"],
+        help="MCP transport. Default streamable-http; use stdio for Claude Code "
+        "or another harness (host/port/path are ignored).",
+    )
     parser.add_argument("--host", help="MCP HTTP bind host.")
     parser.add_argument("--port", type=int, help="MCP HTTP bind port.")
     parser.add_argument("--path", help="MCP HTTP path.")
@@ -132,12 +138,13 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_parser().parse_args()
     config = load_config(args.config)
+    transport = args.transport or config["mcp"].get("transport", "streamable-http")
     host = args.host or config["mcp"]["host"]
     port = args.port or int(config["mcp"]["port"])
     path = args.path or config["mcp"]["path"]
 
     mcp = create_app(config=config, host=host, port=port, path=path)
-    mcp.run(transport="streamable-http")
+    mcp.run(transport=transport)
 
 
 if __name__ == "__main__":

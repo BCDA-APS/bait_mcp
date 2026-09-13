@@ -11,8 +11,12 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "shutdown_timeout_s": 5.0,
     },
     "mcp": {
+        # streamable-http (default) serves the HTTP endpoint below; stdio speaks
+        # MCP over stdin/stdout for drop-in use in Claude Code or another harness.
+        "transport": "streamable-http",
         # Bind loopback by default: this endpoint can write devices and run plans,
         # and is unauthenticated. Set to 0.0.0.0 explicitly to expose it.
+        # host/port/path are ignored under stdio.
         "host": "127.0.0.1",
         "port": 8051,
         "path": "/mcp",
